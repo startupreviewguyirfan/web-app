@@ -1,0 +1,207 @@
+Project Overview
+
+Build a single Next.js 14+ (App Router) application — one codebase for both frontend and backend (using Next.js Route Handlers / Server Actions, no separate API service). This is the website for Startup Review Guy, a YouTube channel by Irfan, a developer based in Toronto with 10+ years of experience building and scaling web apps, who reviews new startups (business model, competition, use case, funding, etc.) and publishes daily videos.
+
+The site has two goals, in priority order:
+
+
+Showcase all reviewed startups/videos, with each startup getting its own dedicated, SEO-optimized page (e.g. /claude-ai-agent, /mercor-ai-job-data).
+Generate partnership leads — startups reaching out to Irfan to be featured / sponsor a paid review.
+
+
+There is also a lightweight admin panel (Google OAuth only, no passwords) for Irfan to add/edit/delete startup review entries.
+
+
+Tech Stack (recommended defaults — use unless you have a strong reason not to)
+
+
+Framework: Next.js 14+ App Router, TypeScript
+Styling: Tailwind CSS + shadcn/ui components
+Database: PostgreSQL (Supabase or Neon) via Prisma ORM
+Auth: NextAuth.js (Auth.js) with Google Provider only — admin access restricted to Irfan's email(s) via an allow-list check in the auth callback, not a separate role table
+Image/asset storage: Supabase Storage or Cloudinary for company logos/screenshots
+Forms/email: Resend or similar for the partnership contact form notifications
+Deployment: Vercel
+Video embeds: YouTube iframe embeds (store just the YouTube video ID, not the full URL)
+
+
+
+Site Map & Pages
+
+1. Landing Page (/)
+
+This is entirely about Irfan — his personal brand, not the startups.
+
+
+Hero section: photo/avatar, headline ("I review new startups so you don't have to" or similar), short bio (developer in Toronto, 10+ yrs building/scaling web apps, AI agent/agentic tooling expertise, mission to help people discover new tools & software)
+CTA buttons: "Watch Latest Reviews" (→ /startups listing) and "Partner With Me" (→ /partner)
+Featured/latest 3-6 startup reviews as cards (pulling from the same data used on the listing page)
+Stats row (optional): number of startups reviewed, YouTube subscriber count, etc. (make these editable/configurable, not hardcoded, since they'll change)
+Social proof / "As seen reviewing" logo strip (optional, can be empty state initially)
+
+
+2. Startup Listing Page (/startups)
+
+
+Grid/list of all reviewed startups, each card showing: logo, name, one-line tagline, category/industry tag, date reviewed, thumbnail from YouTube video
+Filters/search: by category, funding stage, date, or free-text search
+Pagination or infinite scroll
+Each card links to its individual page
+
+
+3. Individual Startup Page (/[slug]) — e.g. /claude-ai-agent
+
+This is the SEO workhorse — build these to rank in Google. Each page is server-rendered (SSG/ISR, revalidate periodically) with dynamic metadata.
+
+Sections/fields per startup (this becomes your Prisma schema — see Data Model below):
+
+
+Company name, logo, tagline, one-paragraph description
+Embedded YouTube video (the review)
+Category/industry, tags
+Founders (name, role, LinkedIn/X link, photo optional)
+Company socials (X/Twitter, LinkedIn, website URL)
+Funding details: total raised, funding stage, notable investors, last round date
+Revenue/ARR (if publicly known or estimated — flag as "estimated" if so)
+Competitors / "how it compares" section
+Use case / who it's for
+Irfan's verdict/rating (e.g. a short "why it matters" or scorecard)
+Date reviewed / last updated
+Related startups (same category) at the bottom
+
+
+SEO requirements per page:
+
+
+Dynamic <title> and meta description generated from company name + tagline
+Open Graph + Twitter Card tags (use the company logo or a generated OG image)
+JSON-LD structured data (schema.org Article or Review type)
+Clean canonical URLs matching the slug
+Auto-generated sitemap.xml that includes every startup slug
+robots.txt allowing indexing
+
+
+4. Partner / Contact Page (/partner)
+
+
+Pitch copy explaining the paid review offering (what Irfan offers, what a partnership includes, audience reach)
+Contact form: company name, contact name, email, website, message/pitch, budget range (optional dropdown)
+On submit: store in DB + send Irfan an email notification (Resend)
+Simple honeypot or basic rate-limiting to prevent spam (no need for full CAPTCHA unless spam becomes an issue)
+
+
+5. Admin Panel (/admin-access)
+
+
+Google Sign-In only (NextAuth Google provider) — if the signed-in email isn't in an allow-list env variable, show "not authorized" and block access
+Dashboard: list of all startup entries with edit/delete/add-new actions
+Form to create/edit a startup entry — all fields from the Data Model below, including image upload for the logo
+List of partnership inquiries submitted via /partner, markable as read/responded
+Keep this admin UI simple and functional — it doesn't need the same design polish as public pages, but should still respect the site's design system
+
+
+6. Footer (all pages)
+
+
+Irfan's social links (YouTube, X/Twitter, LinkedIn, etc. — placeholder links to be filled in)
+Copyright line
+Small nav: Home, Startups, Partner, (Privacy if needed)
+
+
+
+Data Model (Prisma schema outline)
+
+prismamodel Startup {
+  id              String   @id @default(cuid())
+  slug            String   @unique // e.g. "claude-ai-agent"
+  name            String
+  tagline         String
+  description     String   @db.Text
+  logoUrl         String?
+  youtubeVideoId  String
+  category        String
+  tags            String[] // array of tags for filtering/SEO
+  websiteUrl      String?
+  twitterUrl      String?
+  linkedinUrl     String?
+
+  founders        Founder[]
+  fundingStage    String?  // e.g. "Seed", "Series A"
+  totalRaised     String?  // store as string to allow "$5M", "Undisclosed" etc.
+  notableInvestors String?
+  lastRoundDate   DateTime?
+  revenueArr      String?  // store as string, flag estimated separately
+  revenueEstimated Boolean @default(false)
+
+  competitors     String?  @db.Text
+  useCase         String?  @db.Text
+  verdict         String?  @db.Text
+
+  reviewedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  published       Boolean  @default(true)
+}
+
+model Founder {
+  id         String   @id @default(cuid())
+  startupId  String
+  startup    Startup  @relation(fields: [startupId], references: [id])
+  name       String
+  role       String?
+  linkedinUrl String?
+  photoUrl   String?
+}
+
+model PartnerInquiry {
+  id           String   @id @default(cuid())
+  companyName  String
+  contactName  String
+  email        String
+  website      String?
+  message      String   @db.Text
+  budgetRange  String?
+  createdAt    DateTime @default(now())
+  status       String   @default("new") // new, contacted, closed
+}
+
+
+Design System
+
+
+Theme: Black and red, matching the logo (dark navy/black #0E1015-ish base, red accent #E8342A-ish — sample the exact hex from the uploaded logo file), clean white/off-white in light mode
+Light + dark mode: full toggle, respecting system preference by default, with a manual switch in the header
+Typography: bold, condensed sans-serif for headings (something like the logo's font — a strong grotesk/condensed style), clean readable sans for body (e.g. Inter or similar)
+Tone: modern, elegant, editorial — think a cross between a tech review blog and a founder's personal brand site. Not cluttered; generous whitespace; confident use of the red accent for CTAs, links, and highlights only (don't overuse it)
+Components: use shadcn/ui as the base component library, customized to the black/red palette
+Logo: use the uploaded circular logo in the header (small) and favicon; do not distort it
+Cards: startup cards should feel like "trading cards" — logo, name, category tag, clean hover state
+Responsive: fully mobile-responsive, since a chunk of YouTube traffic will land on mobile
+
+
+
+Non-Functional Requirements
+
+
+Fast page loads — use ISR (Incremental Static Regeneration) for startup pages, revalidate on admin edit (on-demand revalidation via a revalidate API route triggered from the admin save action)
+Accessible (proper alt text, semantic HTML, keyboard navigable admin forms)
+Environment-based config: Google OAuth client ID/secret, database URL, admin allow-list emails, Resend API key — all via .env
+Basic analytics hook (Vercel Analytics or Plausible) — optional but recommended for tracking which startup pages convert into partner inquiries
+
+
+
+Deliverable
+
+A working Next.js repo with:
+
+
+All pages/routes above implemented and wired to the Prisma schema
+Seed script with 2-3 example startup entries for testing
+Working Google OAuth admin login restricted to an allow-list
+Working partner contact form with email notification
+Auto-generated sitemap and per-page SEO metadata
+Light/dark mode toggle and the black/red design system applied consistently
+
+
+
+Note for the agent: treat the specific hex colors, fonts, and exact copy as a starting point — flag any assumptions you make so Irfan can review before finalizing.
+Content

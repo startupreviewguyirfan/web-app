@@ -3,20 +3,28 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Startup Review Guy API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: startups
+    description: Startup entries
+  - name: partner
+    description: Partnership inquiries
+  - name: admin
+    description: Admin operations
+  - name: auth
+    description: Authentication
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +32,634 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /startups:
+    get:
+      operationId: listStartups
+      tags: [startups]
+      summary: List all published startups
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: fundingStage
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: List of startups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartupListResponse"
+
+  /startups/featured:
+    get:
+      operationId: getFeaturedStartups
+      tags: [startups]
+      summary: Get latest featured startups for homepage
+      responses:
+        "200":
+          description: Featured startups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StartupSummary"
+
+  /startups/categories:
+    get:
+      operationId: getCategories
+      tags: [startups]
+      summary: Get all unique startup categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /startups/{slug}:
+    get:
+      operationId: getStartup
+      tags: [startups]
+      summary: Get a single startup by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Startup detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Startup"
+        "404":
+          description: Not found
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [startups]
+      summary: Get site-wide stats
+      responses:
+        "200":
+          description: Site stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SiteStats"
+
+  /partner:
+    post:
+      operationId: submitPartnerInquiry
+      tags: [partner]
+      summary: Submit a partnership inquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerInquiryInput"
+      responses:
+        "201":
+          description: Inquiry submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerInquiry"
+        "400":
+          description: Validation error
+
+  /auth/session:
+    get:
+      operationId: getSession
+      tags: [auth]
+      summary: Get current auth session
+      responses:
+        "200":
+          description: Session info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResult"
+
+  /admin/startups:
+    get:
+      operationId: adminListStartups
+      tags: [admin]
+      summary: Admin - list all startups (including unpublished)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All startups
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartupListResponse"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createStartup
+      tags: [admin]
+      summary: Admin - create a startup entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartupInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Startup"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+
+  /admin/startups/{id}:
+    put:
+      operationId: updateStartup
+      tags: [admin]
+      summary: Admin - update a startup entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartupPatch"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Startup"
+        "404":
+          description: Not found
+        "401":
+          description: Unauthorized
+    delete:
+      operationId: deleteStartup
+      tags: [admin]
+      summary: Admin - delete a startup entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+        "401":
+          description: Unauthorized
+
+  /admin/inquiries:
+    get:
+      operationId: adminListInquiries
+      tags: [admin]
+      summary: Admin - list all partnership inquiries
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inquiries list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PartnerInquiry"
+        "401":
+          description: Unauthorized
+
+  /admin/inquiries/{id}:
+    patch:
+      operationId: updateInquiry
+      tags: [admin]
+      summary: Admin - update inquiry status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InquiryStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerInquiry"
+        "404":
+          description: Not found
+        "401":
+          description: Unauthorized
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    Founder:
+      type: object
+      required: [id, startupId, name]
+      properties:
+        id:
+          type: string
+        startupId:
+          type: string
+        name:
+          type: string
+        role:
+          type: ["string", "null"]
+        linkedinUrl:
+          type: ["string", "null"]
+        photoUrl:
+          type: ["string", "null"]
+
+    FounderInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        linkedinUrl:
+          type: string
+        photoUrl:
+          type: string
+
+    StartupSummary:
+      type: object
+      required: [id, slug, name, tagline, category, youtubeVideoId, reviewedAt, published]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        logoUrl:
+          type: ["string", "null"]
+        youtubeVideoId:
+          type: string
+        fundingStage:
+          type: ["string", "null"]
+        reviewedAt:
+          type: string
+        published:
+          type: boolean
+
+    Startup:
+      type: object
+      required: [id, slug, name, tagline, description, category, youtubeVideoId, reviewedAt, updatedAt, published]
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+        description:
+          type: string
+        logoUrl:
+          type: ["string", "null"]
+        youtubeVideoId:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        websiteUrl:
+          type: ["string", "null"]
+        twitterUrl:
+          type: ["string", "null"]
+        linkedinUrl:
+          type: ["string", "null"]
+        founders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Founder"
+        fundingStage:
+          type: ["string", "null"]
+        totalRaised:
+          type: ["string", "null"]
+        notableInvestors:
+          type: ["string", "null"]
+        lastRoundDate:
+          type: ["string", "null"]
+        revenueArr:
+          type: ["string", "null"]
+        revenueEstimated:
+          type: boolean
+        competitors:
+          type: ["string", "null"]
+        useCase:
+          type: ["string", "null"]
+        verdict:
+          type: ["string", "null"]
+        reviewedAt:
+          type: string
+        updatedAt:
+          type: string
+        published:
+          type: boolean
+        relatedStartups:
+          type: array
+          items:
+            $ref: "#/components/schemas/StartupSummary"
+
+    StartupListResponse:
+      type: object
+      required: [startups, total, page, limit]
+      properties:
+        startups:
+          type: array
+          items:
+            $ref: "#/components/schemas/StartupSummary"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    StartupInput:
+      type: object
+      required: [slug, name, tagline, description, youtubeVideoId, category]
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+        description:
+          type: string
+        logoUrl:
+          type: string
+        youtubeVideoId:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        websiteUrl:
+          type: string
+        twitterUrl:
+          type: string
+        linkedinUrl:
+          type: string
+        founders:
+          type: array
+          items:
+            $ref: "#/components/schemas/FounderInput"
+        fundingStage:
+          type: string
+        totalRaised:
+          type: string
+        notableInvestors:
+          type: string
+        lastRoundDate:
+          type: string
+        revenueArr:
+          type: string
+        revenueEstimated:
+          type: boolean
+        competitors:
+          type: string
+        useCase:
+          type: string
+        verdict:
+          type: string
+        published:
+          type: boolean
+
+    StartupPatch:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+        description:
+          type: string
+        logoUrl:
+          type: string
+        youtubeVideoId:
+          type: string
+        category:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        websiteUrl:
+          type: string
+        twitterUrl:
+          type: string
+        linkedinUrl:
+          type: string
+        founders:
+          type: array
+          items:
+            $ref: "#/components/schemas/FounderInput"
+        fundingStage:
+          type: string
+        totalRaised:
+          type: string
+        notableInvestors:
+          type: string
+        lastRoundDate:
+          type: string
+        revenueArr:
+          type: string
+        revenueEstimated:
+          type: boolean
+        competitors:
+          type: string
+        useCase:
+          type: string
+        verdict:
+          type: string
+        published:
+          type: boolean
+
+    PartnerInquiry:
+      type: object
+      required: [id, companyName, contactName, email, message, createdAt, status]
+      properties:
+        id:
+          type: string
+        companyName:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        website:
+          type: ["string", "null"]
+        message:
+          type: string
+        budgetRange:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        status:
+          type: string
+
+    PartnerInquiryInput:
+      type: object
+      required: [companyName, contactName, email, message]
+      properties:
+        companyName:
+          type: string
+        contactName:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        message:
+          type: string
+        budgetRange:
+          type: string
+        honeypot:
+          type: string
+
+    InquiryStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    SiteStats:
+      type: object
+      required: [totalReviews, totalCategories]
+      properties:
+        totalReviews:
+          type: integer
+        totalCategories:
+          type: integer
+        subscriberCount:
+          type: ["integer", "null"]
+        totalViews:
+          type: ["integer", "null"]
+
+    AuthSession:
+      type: object
+      required: [authenticated]
+      properties:
+        authenticated:
+          type: boolean
+        user:
+          type: object
+          properties:
+            email:
+              type: string
+            name:
+              type: ["string", "null"]
+            picture:
+              type: ["string", "null"]
+
+    LogoutResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
