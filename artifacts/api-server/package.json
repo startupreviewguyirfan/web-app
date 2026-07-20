@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "dev:worker": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "PORT=5100 BASE_PATH=/ pnpm --filter @workspace/startup-review-guy run build && wrangler deploy",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

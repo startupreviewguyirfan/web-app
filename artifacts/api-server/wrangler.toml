@@ -1,5 +1,8 @@
-# Cloudflare Workers config for the API. Deploy with:
+# Cloudflare Workers config for the whole app (API + built frontend SPA).
+# Deploy with:
 #   pnpm --filter @workspace/api-server run deploy
+# (this builds the frontend first, then runs `wrangler deploy`, which uploads
+# both the Worker code and the static assets in one shot)
 #
 # One-time setup (run these yourself — see repo README / setup notes):
 #   1. wrangler login
@@ -27,3 +30,13 @@ binding = "HYPERDRIVE"
 id = "REPLACE_WITH_HYPERDRIVE_ID"
 # For `wrangler dev` against a local/dev Postgres instead of the real one:
 # localConnectionString = "postgresql://postgres.your-project-ref:password@aws-0-your-region.pooler.supabase.com:5432/postgres"
+
+# Built React SPA, served directly from this Worker at the edge.
+# `/api/*` is routed to the Worker's fetch handler first (run_worker_first)
+# so it never gets shadowed by static assets; every other path falls back to
+# index.html for client-side routing (wouter).
+[assets]
+directory = "../startup-review-guy/dist/public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]

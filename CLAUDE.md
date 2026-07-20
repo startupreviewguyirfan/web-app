@@ -11,7 +11,7 @@ Startup Review Guy is the website for a YouTube channel run by Irfan (developer 
 
 There's also a lightweight admin panel (`/admin-access`, Google OAuth only, allow-listed emails) for Irfan to manage startup entries and incoming partnership inquiries.
 
-**Note on origin:** the original product brief (kept at `attached_assets/Pasted-Project-Overview-*.txt`) specified Next.js + Prisma + NextAuth + Vercel. The project was rebuilt as a pnpm-workspace monorepo instead — React/Vite frontend on Netlify, a Hono API on Cloudflare Workers, Supabase Postgres via Drizzle, and hand-rolled Google OAuth — because Netlify doesn't run a persistent Node server and Vercel wasn't used for hosting. The product requirements (pages, data model, SEO goals) from that original brief still apply; only the implementation stack differs. Treat the brief as historical context, not as a guide to current architecture.
+**Note on origin:** the original product brief (kept at `attached_assets/Pasted-Project-Overview-*.txt`) specified Next.js + Prisma + NextAuth + Vercel. The project was rebuilt as a pnpm-workspace monorepo instead — React/Vite frontend and a Hono API both deployed to a single Cloudflare Worker (`artifacts/api-server`, static assets + `/api/*`), Supabase Postgres via Drizzle, and hand-rolled Google OAuth — because Vercel wasn't used for hosting and Node-only auth libraries don't run on Workers. The product requirements (pages, data model, SEO goals) from that original brief still apply; only the implementation stack differs. Treat the brief as historical context, not as a guide to current architecture.
 
 ## Pages
 
@@ -84,10 +84,10 @@ YouTube thumbnails are derived on the fly from `youtubeVideoId` (`https://img.yo
 
 ## Deployment
 
-Frontend and API deploy separately since Netlify only serves static sites/functions and the API needs a persistent Postgres connection.
+Frontend and API deploy together as a single Cloudflare Worker — no separate static host.
 
-- **API → Cloudflare Workers**: `wrangler.toml` in `artifacts/api-server`. Needs a Hyperdrive binding (`wrangler hyperdrive create ... --connection-string="<Supabase session-pooler URL>"`) pasted into `wrangler.toml`, plus `wrangler secret put` for `SESSION_SECRET`/`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`ADMIN_EMAILS`. Deploy with `pnpm --filter @workspace/api-server run deploy`. The Workers callback URL must be registered in Google Cloud Console as an authorized redirect URI.
-- **Frontend → Netlify**: `netlify.toml` at repo root (build command, publish dir, SPA fallback). Its `/api/*` redirect must point at the deployed Worker URL so the API stays same-origin from the browser — this matters because the session cookie is not cross-site.
+- **Everything → Cloudflare Workers**: `wrangler.toml` in `artifacts/api-server`. Needs a Hyperdrive binding (`wrangler hyperdrive create ... --connection-string="<Supabase session-pooler URL>"`) pasted into `wrangler.toml`, plus `wrangler secret put` for `SESSION_SECRET`/`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`ADMIN_EMAILS`. Deploy with `pnpm --filter @workspace/api-server run deploy` — this builds the frontend (`artifacts/startup-review-guy/dist/public`) and then runs `wrangler deploy`, which uploads both the Worker code and the static assets in one shot. The Workers callback URL must be registered in Google Cloud Console as an authorized redirect URI.
+- The `[assets]` block in `wrangler.toml` serves the built SPA directly from the Worker; `run_worker_first = ["/api/*"]` routes API paths to the Hono app before asset matching, and `not_found_handling = "single-page-application"` falls back to `index.html` for client-side routes (wouter). Everything is genuinely same-origin now, so the session cookie needs no cross-site handling.
 - **Database → Supabase Postgres**: use the session-pooler connection string (`aws-0-<region>.pooler.supabase.com:5432`), not the direct `db.<ref>.supabase.co` host — the direct host is IPv6-only unless the IPv4 add-on is purchased, and most local networks are IPv4-only.
 
 ## Env vars
