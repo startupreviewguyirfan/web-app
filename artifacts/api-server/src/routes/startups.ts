@@ -1,21 +1,33 @@
-import { Router, type IRouter } from "express";
+import { Hono } from "hono";
 import { eq, ilike, and, or, sql, desc, ne } from "drizzle-orm";
-import { db, startupsTable, foundersTable } from "@workspace/db";
-import {
-  ListStartupsQueryParams,
-  GetStartupParams,
-} from "@workspace/api-zod";
+import { startupsTable, foundersTable } from "@workspace/db";
+import { ListStartupsQueryParams, GetStartupParams } from "@workspace/api-zod";
+import type { AppEnv } from "../types";
 
-const router: IRouter = Router();
+const startups = new Hono<AppEnv>();
+
+const summaryColumns = {
+  id: startupsTable.id,
+  slug: startupsTable.slug,
+  name: startupsTable.name,
+  tagline: startupsTable.tagline,
+  category: startupsTable.category,
+  tags: startupsTable.tags,
+  logoUrl: startupsTable.logoUrl,
+  youtubeVideoId: startupsTable.youtubeVideoId,
+  fundingStage: startupsTable.fundingStage,
+  reviewedAt: startupsTable.reviewedAt,
+  published: startupsTable.published,
+};
 
 // GET /startups — list published startups with filters
-router.get("/startups", async (req, res): Promise<void> => {
-  const parsed = ListStartupsQueryParams.safeParse(req.query);
+startups.get("/startups", async (c) => {
+  const parsed = ListStartupsQueryParams.safeParse(c.req.query());
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
 
+  const db = c.get("db");
   const { category, fundingStage, search, page = 1, limit = 12 } = parsed.data;
   const offset = (page - 1) * limit;
 
@@ -33,39 +45,21 @@ router.get("/startups", async (req, res): Promise<void> => {
     );
   }
 
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const where = and(...conditions);
 
-  const [startups, countResult] = await Promise.all([
+  const [rows, countResult] = await Promise.all([
     db
-      .select({
-        id: startupsTable.id,
-        slug: startupsTable.slug,
-        name: startupsTable.name,
-        tagline: startupsTable.tagline,
-        category: startupsTable.category,
-        tags: startupsTable.tags,
-        logoUrl: startupsTable.logoUrl,
-        youtubeVideoId: startupsTable.youtubeVideoId,
-        fundingStage: startupsTable.fundingStage,
-        reviewedAt: startupsTable.reviewedAt,
-        published: startupsTable.published,
-      })
+      .select(summaryColumns)
       .from(startupsTable)
       .where(where)
       .orderBy(desc(startupsTable.reviewedAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`cast(count(*) as int)` })
-      .from(startupsTable)
-      .where(where),
+    db.select({ count: sql<number>`cast(count(*) as int)` }).from(startupsTable).where(where),
   ]);
 
-  res.json({
-    startups: startups.map((s) => ({
-      ...s,
-      reviewedAt: s.reviewedAt.toISOString(),
-    })),
+  return c.json({
+    startups: rows.map((s) => ({ ...s, reviewedAt: s.reviewedAt.toISOString() })),
     total: countResult[0]?.count ?? 0,
     page,
     limit,
@@ -73,59 +67,42 @@ router.get("/startups", async (req, res): Promise<void> => {
 });
 
 // GET /startups/featured — latest 6 published startups for homepage
-router.get("/startups/featured", async (_req, res): Promise<void> => {
-  const startups = await db
-    .select({
-      id: startupsTable.id,
-      slug: startupsTable.slug,
-      name: startupsTable.name,
-      tagline: startupsTable.tagline,
-      category: startupsTable.category,
-      tags: startupsTable.tags,
-      logoUrl: startupsTable.logoUrl,
-      youtubeVideoId: startupsTable.youtubeVideoId,
-      fundingStage: startupsTable.fundingStage,
-      reviewedAt: startupsTable.reviewedAt,
-      published: startupsTable.published,
-    })
+startups.get("/startups/featured", async (c) => {
+  const db = c.get("db");
+
+  const rows = await db
+    .select(summaryColumns)
     .from(startupsTable)
     .where(eq(startupsTable.published, true))
     .orderBy(desc(startupsTable.reviewedAt))
     .limit(6);
 
-  res.json(
-    startups.map((s) => ({
-      ...s,
-      reviewedAt: s.reviewedAt.toISOString(),
-    })),
-  );
+  return c.json(rows.map((s) => ({ ...s, reviewedAt: s.reviewedAt.toISOString() })));
 });
 
 // GET /startups/categories — unique category list
-router.get("/startups/categories", async (_req, res): Promise<void> => {
+startups.get("/startups/categories", async (c) => {
+  const db = c.get("db");
+
   const rows = await db
     .selectDistinct({ category: startupsTable.category })
     .from(startupsTable)
     .where(eq(startupsTable.published, true))
     .orderBy(startupsTable.category);
 
-  res.json(rows.map((r) => r.category));
+  return c.json(rows.map((r) => r.category));
 });
 
 // GET /stats — site stats
-router.get("/stats", async (_req, res): Promise<void> => {
+startups.get("/stats", async (c) => {
+  const db = c.get("db");
+
   const [reviewsResult, categoriesResult] = await Promise.all([
-    db
-      .select({ count: sql<number>`cast(count(*) as int)` })
-      .from(startupsTable)
-      .where(eq(startupsTable.published, true)),
-    db
-      .selectDistinct({ category: startupsTable.category })
-      .from(startupsTable)
-      .where(eq(startupsTable.published, true)),
+    db.select({ count: sql<number>`cast(count(*) as int)` }).from(startupsTable).where(eq(startupsTable.published, true)),
+    db.selectDistinct({ category: startupsTable.category }).from(startupsTable).where(eq(startupsTable.published, true)),
   ]);
 
-  res.json({
+  return c.json({
     totalReviews: reviewsResult[0]?.count ?? 0,
     totalCategories: categoriesResult.length,
     subscriberCount: null,
@@ -134,12 +111,13 @@ router.get("/stats", async (_req, res): Promise<void> => {
 });
 
 // GET /startups/:slug — individual startup page
-router.get("/startups/:slug", async (req, res): Promise<void> => {
-  const params = GetStartupParams.safeParse(req.params);
+startups.get("/startups/:slug", async (c) => {
+  const params = GetStartupParams.safeParse({ slug: c.req.param("slug") });
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
+    return c.json({ error: params.error.message }, 400);
   }
+
+  const db = c.get("db");
 
   const [startup] = await db
     .select()
@@ -152,8 +130,7 @@ router.get("/startups/:slug", async (req, res): Promise<void> => {
     );
 
   if (!startup) {
-    res.status(404).json({ error: "Startup not found" });
-    return;
+    return c.json({ error: "Startup not found" }, 404);
   }
 
   const founders = await db
@@ -163,19 +140,7 @@ router.get("/startups/:slug", async (req, res): Promise<void> => {
 
   // Related startups (same category, different slug)
   const related = await db
-    .select({
-      id: startupsTable.id,
-      slug: startupsTable.slug,
-      name: startupsTable.name,
-      tagline: startupsTable.tagline,
-      category: startupsTable.category,
-      tags: startupsTable.tags,
-      logoUrl: startupsTable.logoUrl,
-      youtubeVideoId: startupsTable.youtubeVideoId,
-      fundingStage: startupsTable.fundingStage,
-      reviewedAt: startupsTable.reviewedAt,
-      published: startupsTable.published,
-    })
+    .select(summaryColumns)
     .from(startupsTable)
     .where(
       and(
@@ -186,16 +151,13 @@ router.get("/startups/:slug", async (req, res): Promise<void> => {
     )
     .limit(4);
 
-  res.json({
+  return c.json({
     ...startup,
     reviewedAt: startup.reviewedAt.toISOString(),
     updatedAt: startup.updatedAt.toISOString(),
     founders,
-    relatedStartups: related.map((s) => ({
-      ...s,
-      reviewedAt: s.reviewedAt.toISOString(),
-    })),
+    relatedStartups: related.map((s) => ({ ...s, reviewedAt: s.reviewedAt.toISOString() })),
   });
 });
 
-export default router;
+export default startups;

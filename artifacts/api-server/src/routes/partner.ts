@@ -1,24 +1,37 @@
-import { Router, type IRouter } from "express";
-import { db, partnerInquiriesTable } from "@workspace/db";
+import { Hono } from "hono";
+import { partnerInquiriesTable } from "@workspace/db";
 import { SubmitPartnerInquiryBody } from "@workspace/api-zod";
+import type { AppEnv } from "../types";
 
-const router: IRouter = Router();
+const partner = new Hono<AppEnv>();
 
-router.post("/partner", async (req, res): Promise<void> => {
+partner.post("/partner", async (c) => {
+  const body = await c.req.json();
+
   // Honeypot check — bots fill hidden fields
-  if (req.body.honeypot) {
+  if (body.honeypot) {
     // Silently accept to not reveal the check
-    res.status(201).json({ id: "ok", companyName: "", contactName: "", email: "", message: "", createdAt: new Date().toISOString(), status: "new" });
-    return;
+    return c.json(
+      {
+        id: "ok",
+        companyName: "",
+        contactName: "",
+        email: "",
+        message: "",
+        createdAt: new Date().toISOString(),
+        status: "new",
+      },
+      201,
+    );
   }
 
-  const parsed = SubmitPartnerInquiryBody.safeParse(req.body);
+  const parsed = SubmitPartnerInquiryBody.safeParse(body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
 
   const { companyName, contactName, email, website, message, budgetRange } = parsed.data;
+  const db = c.get("db");
 
   const [inquiry] = await db
     .insert(partnerInquiriesTable)
@@ -32,12 +45,9 @@ router.post("/partner", async (req, res): Promise<void> => {
     })
     .returning();
 
-  req.log.info({ email, companyName }, "New partner inquiry submitted");
+  console.log("New partner inquiry submitted", { email, companyName });
 
-  res.status(201).json({
-    ...inquiry,
-    createdAt: inquiry.createdAt.toISOString(),
-  });
+  return c.json({ ...inquiry, createdAt: inquiry.createdAt.toISOString() }, 201);
 });
 
-export default router;
+export default partner;

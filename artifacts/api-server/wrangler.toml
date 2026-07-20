@@ -1,0 +1,29 @@
+# Cloudflare Workers config for the API. Deploy with:
+#   pnpm --filter @workspace/api-server run deploy
+#
+# One-time setup (run these yourself — see repo README / setup notes):
+#   1. wrangler login
+#   2. wrangler hyperdrive create startup-review-guy-db --connection-string="<your Supabase DATABASE_URL>"
+#      Use the Supabase "Session pooler" connection string here (Project Settings ->
+#      Database -> Connection string), not the transaction pooler (port 6543) —
+#      Hyperdrive already pools connections on Cloudflare's side, and pairing it
+#      with a transaction-mode pooler on the Supabase side is not recommended.
+#      Paste the printed id into the `id` field below.
+#   3. wrangler secret put SESSION_SECRET
+#      wrangler secret put GOOGLE_CLIENT_ID       (optional, admin login)
+#      wrangler secret put GOOGLE_CLIENT_SECRET   (optional, admin login)
+#      wrangler secret put ADMIN_EMAILS           (optional, admin login)
+
+name = "startup-review-guy-api"
+main = "src/index.worker.ts"
+compatibility_date = "2026-07-19"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NODE_ENV = "production"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "REPLACE_WITH_HYPERDRIVE_ID"
+# For `wrangler dev` against a local/dev Postgres instead of the real one:
+# localConnectionString = "postgresql://postgres.your-project-ref:password@aws-0-your-region.pooler.supabase.com:5432/postgres"

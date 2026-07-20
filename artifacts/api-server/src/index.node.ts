@@ -1,7 +1,7 @@
+import { serve } from "@hono/node-server";
 import app from "./app";
-import { logger } from "./lib/logger";
 
-const rawPort = process.env["PORT"];
+const rawPort = process.env.PORT;
 
 if (!rawPort) {
   throw new Error(
@@ -15,11 +15,6 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
-  logger.info({ port }, "Server listening");
+serve({ fetch: app.fetch, port }, (info) => {
+  console.log(`Server listening on port ${info.port}`);
 });

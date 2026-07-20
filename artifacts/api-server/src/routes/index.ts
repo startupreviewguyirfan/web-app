@@ -1,16 +1,17 @@
-import { Router, type IRouter } from "express";
+import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import startupsRouter from "./startups";
 import partnerRouter from "./partner";
 import adminRouter from "./admin";
 
-const router: IRouter = Router();
+const router = new Hono<AppEnv>();
 
-router.use(healthRouter);
-router.use(authRouter);
-router.use(startupsRouter);
-router.use(partnerRouter);
-router.use(adminRouter);
+router.route("/", healthRouter);
+router.route("/", authRouter);
+router.route("/", startupsRouter);
+router.route("/", partnerRouter);
+router.route("/", adminRouter);
 
 export default router;

@@ -1,0 +1,29 @@
+# Netlify hosts the built frontend as a static site.
+# The API runs separately on Cloudflare Workers (see artifacts/api-server/wrangler.toml) —
+# after deploying that Worker, replace <your-subdomain> below with its real workers.dev
+# hostname (or a custom domain) so /api/* proxies to it and stays same-origin for cookies.
+
+[build]
+  base = "."
+  command = "pnpm --filter @workspace/startup-review-guy run build"
+  publish = "artifacts/startup-review-guy/dist/public"
+
+[build.environment]
+  # Required by vite.config.ts; unused at runtime for a static build but must be set.
+  PORT = "5100"
+  BASE_PATH = "/"
+  NODE_VERSION = "24"
+
+# Proxy API calls to the Cloudflare Worker so the browser sees everything as
+# one origin (avoids cross-site cookie issues with the session cookie).
+[[redirects]]
+  from = "/api/*"
+  to = "https://startup-review-guy-api.<your-subdomain>.workers.dev/api/:splat"
+  status = 200
+  force = true
+
+# SPA fallback for client-side routing (wouter)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

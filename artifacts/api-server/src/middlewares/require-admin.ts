@@ -1,9 +1,12 @@
-import type { Request, Response, NextFunction } from "express";
+import type { MiddlewareHandler } from "hono";
+import type { AppEnv } from "../types";
+import { getSessionUser } from "../lib/session";
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (!req.isAuthenticated() || !req.user) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
+export const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const user = await getSessionUser(c);
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
   }
-  next();
-}
+  c.set("user", user);
+  return next();
+};

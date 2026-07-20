@@ -1,6 +1,6 @@
-import { Router, type IRouter } from "express";
+import { Hono } from "hono";
 import { eq, ilike, and, sql, desc } from "drizzle-orm";
-import { db, startupsTable, foundersTable, partnerInquiriesTable } from "@workspace/db";
+import { startupsTable, foundersTable, partnerInquiriesTable } from "@workspace/db";
 import {
   AdminListStartupsQueryParams,
   CreateStartupBody,
@@ -11,31 +11,29 @@ import {
   UpdateInquiryParams,
   UpdateInquiryBody,
 } from "@workspace/api-zod";
+import type { AppEnv } from "../types";
 import { requireAdmin } from "../middlewares/require-admin";
 
-const router: IRouter = Router();
+const admin = new Hono<AppEnv>();
 
 // Apply admin guard to all routes
-router.use(requireAdmin);
+admin.use("*", requireAdmin);
 
 // GET /admin/startups
-router.get("/admin/startups", async (req, res): Promise<void> => {
-  const parsed = AdminListStartupsQueryParams.safeParse(req.query);
+admin.get("/admin/startups", async (c) => {
+  const parsed = AdminListStartupsQueryParams.safeParse(c.req.query());
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
 
+  const db = c.get("db");
   const { page = 1, limit = 20, search } = parsed.data;
   const offset = (page - 1) * limit;
 
-  const conditions = search
-    ? [ilike(startupsTable.name, `%${search}%`)]
-    : [];
-
+  const conditions = search ? [ilike(startupsTable.name, `%${search}%`)] : [];
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const [startups, countResult] = await Promise.all([
+  const [rows, countResult] = await Promise.all([
     db
       .select({
         id: startupsTable.id,
@@ -55,17 +53,11 @@ router.get("/admin/startups", async (req, res): Promise<void> => {
       .orderBy(desc(startupsTable.reviewedAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`cast(count(*) as int)` })
-      .from(startupsTable)
-      .where(where),
+    db.select({ count: sql<number>`cast(count(*) as int)` }).from(startupsTable).where(where),
   ]);
 
-  res.json({
-    startups: startups.map((s) => ({
-      ...s,
-      reviewedAt: s.reviewedAt.toISOString(),
-    })),
+  return c.json({
+    startups: rows.map((s) => ({ ...s, reviewedAt: s.reviewedAt.toISOString() })),
     total: countResult[0]?.count ?? 0,
     page,
     limit,
@@ -73,13 +65,13 @@ router.get("/admin/startups", async (req, res): Promise<void> => {
 });
 
 // POST /admin/startups
-router.post("/admin/startups", async (req, res): Promise<void> => {
-  const parsed = CreateStartupBody.safeParse(req.body);
+admin.post("/admin/startups", async (c) => {
+  const parsed = CreateStartupBody.safeParse(await c.req.json());
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
 
+  const db = c.get("db");
   const { founders: founderInputs, ...startupData } = parsed.data;
 
   const [startup] = await db
@@ -92,7 +84,7 @@ router.post("/admin/startups", async (req, res): Promise<void> => {
     })
     .returning();
 
-  let founders: typeof foundersTable.$inferSelect[] = [];
+  let founders: (typeof foundersTable.$inferSelect)[] = [];
   if (founderInputs && founderInputs.length > 0) {
     founders = await db
       .insert(foundersTable)
@@ -100,29 +92,31 @@ router.post("/admin/startups", async (req, res): Promise<void> => {
       .returning();
   }
 
-  res.status(201).json({
-    ...startup,
-    reviewedAt: startup.reviewedAt.toISOString(),
-    updatedAt: startup.updatedAt.toISOString(),
-    founders,
-    relatedStartups: [],
-  });
+  return c.json(
+    {
+      ...startup,
+      reviewedAt: startup.reviewedAt.toISOString(),
+      updatedAt: startup.updatedAt.toISOString(),
+      founders,
+      relatedStartups: [],
+    },
+    201,
+  );
 });
 
 // PUT /admin/startups/:id
-router.put("/admin/startups/:id", async (req, res): Promise<void> => {
-  const params = UpdateStartupParams.safeParse(req.params);
+admin.put("/admin/startups/:id", async (c) => {
+  const params = UpdateStartupParams.safeParse({ id: c.req.param("id") });
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
+    return c.json({ error: params.error.message }, 400);
   }
 
-  const parsed = UpdateStartupBody.safeParse(req.body);
+  const parsed = UpdateStartupBody.safeParse(await c.req.json());
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
 
+  const db = c.get("db");
   const { founders: founderInputs, ...startupData } = parsed.data;
 
   const [startup] = await db
@@ -132,12 +126,11 @@ router.put("/admin/startups/:id", async (req, res): Promise<void> => {
     .returning();
 
   if (!startup) {
-    res.status(404).json({ error: "Startup not found" });
-    return;
+    return c.json({ error: "Startup not found" }, 404);
   }
 
   // Replace founders if provided
-  let founders: typeof foundersTable.$inferSelect[] = [];
+  let founders: (typeof foundersTable.$inferSelect)[] = [];
   if (founderInputs !== undefined) {
     await db.delete(foundersTable).where(eq(foundersTable.startupId, startup.id));
     if (founderInputs.length > 0) {
@@ -147,13 +140,10 @@ router.put("/admin/startups/:id", async (req, res): Promise<void> => {
         .returning();
     }
   } else {
-    founders = await db
-      .select()
-      .from(foundersTable)
-      .where(eq(foundersTable.startupId, startup.id));
+    founders = await db.select().from(foundersTable).where(eq(foundersTable.startupId, startup.id));
   }
 
-  res.json({
+  return c.json({
     ...startup,
     reviewedAt: startup.reviewedAt.toISOString(),
     updatedAt: startup.updatedAt.toISOString(),
@@ -163,12 +153,13 @@ router.put("/admin/startups/:id", async (req, res): Promise<void> => {
 });
 
 // DELETE /admin/startups/:id
-router.delete("/admin/startups/:id", async (req, res): Promise<void> => {
-  const params = DeleteStartupParams.safeParse(req.params);
+admin.delete("/admin/startups/:id", async (c) => {
+  const params = DeleteStartupParams.safeParse({ id: c.req.param("id") });
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
+    return c.json({ error: params.error.message }, 400);
   }
+
+  const db = c.get("db");
 
   const [deleted] = await db
     .delete(startupsTable)
@@ -176,24 +167,21 @@ router.delete("/admin/startups/:id", async (req, res): Promise<void> => {
     .returning({ id: startupsTable.id });
 
   if (!deleted) {
-    res.status(404).json({ error: "Startup not found" });
-    return;
+    return c.json({ error: "Startup not found" }, 404);
   }
 
-  res.sendStatus(204);
+  return c.body(null, 204);
 });
 
 // GET /admin/inquiries
-router.get("/admin/inquiries", async (req, res): Promise<void> => {
-  const parsed = AdminListInquiriesQueryParams.safeParse(req.query);
+admin.get("/admin/inquiries", async (c) => {
+  const parsed = AdminListInquiriesQueryParams.safeParse(c.req.query());
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
 
-  const conditions = parsed.data.status
-    ? [eq(partnerInquiriesTable.status, parsed.data.status)]
-    : [];
+  const db = c.get("db");
+  const conditions = parsed.data.status ? [eq(partnerInquiriesTable.status, parsed.data.status)] : [];
 
   const inquiries = await db
     .select()
@@ -201,27 +189,22 @@ router.get("/admin/inquiries", async (req, res): Promise<void> => {
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(partnerInquiriesTable.createdAt));
 
-  res.json(
-    inquiries.map((i) => ({
-      ...i,
-      createdAt: i.createdAt.toISOString(),
-    })),
-  );
+  return c.json(inquiries.map((i) => ({ ...i, createdAt: i.createdAt.toISOString() })));
 });
 
 // PATCH /admin/inquiries/:id
-router.patch("/admin/inquiries/:id", async (req, res): Promise<void> => {
-  const params = UpdateInquiryParams.safeParse(req.params);
+admin.patch("/admin/inquiries/:id", async (c) => {
+  const params = UpdateInquiryParams.safeParse({ id: c.req.param("id") });
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
+    return c.json({ error: params.error.message }, 400);
   }
 
-  const parsed = UpdateInquiryBody.safeParse(req.body);
+  const parsed = UpdateInquiryBody.safeParse(await c.req.json());
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
+
+  const db = c.get("db");
 
   const [inquiry] = await db
     .update(partnerInquiriesTable)
@@ -230,14 +213,10 @@ router.patch("/admin/inquiries/:id", async (req, res): Promise<void> => {
     .returning();
 
   if (!inquiry) {
-    res.status(404).json({ error: "Inquiry not found" });
-    return;
+    return c.json({ error: "Inquiry not found" }, 404);
   }
 
-  res.json({
-    ...inquiry,
-    createdAt: inquiry.createdAt.toISOString(),
-  });
+  return c.json({ ...inquiry, createdAt: inquiry.createdAt.toISOString() });
 });
 
-export default router;
+export default admin;
