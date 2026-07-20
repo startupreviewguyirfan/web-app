@@ -27,7 +27,7 @@ NODE_ENV = "production"
 
 [[hyperdrive]]
 binding = "HYPERDRIVE"
-id = "REPLACE_WITH_HYPERDRIVE_ID"
+id = "5371990d17a740b0a787bfd7a9bc250d"
 # For `wrangler dev` against a local/dev Postgres instead of the real one:
 # localConnectionString = "postgresql://postgres.your-project-ref:password@aws-0-your-region.pooler.supabase.com:5432/postgres"
 
