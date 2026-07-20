@@ -22,7 +22,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <nav className="hidden md:flex items-center gap-6 font-display font-medium uppercase tracking-widest text-sm">
               <Link href="/startups" className="hover:text-primary transition-colors">Startups</Link>
               <Link href="/partner" className="hover:text-primary transition-colors">Partner With Me</Link>
-              <Link href="/admin-access" className="text-muted-foreground hover:text-foreground transition-colors text-xs">Admin</Link>
             </nav>
 
             <div className="flex items-center gap-2">
@@ -54,7 +53,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="md:hidden border-t-2 border-border bg-background absolute w-full left-0 p-4 flex flex-col gap-4 shadow-xl">
             <Link href="/startups" onClick={() => setMobileMenuOpen(false)} className="font-display uppercase tracking-widest text-lg py-2 border-b border-border/50">Startups</Link>
             <Link href="/partner" onClick={() => setMobileMenuOpen(false)} className="font-display uppercase tracking-widest text-lg py-2 border-b border-border/50">Partner With Me</Link>
-            <Link href="/admin-access" onClick={() => setMobileMenuOpen(false)} className="font-display uppercase tracking-widest text-lg py-2 text-muted-foreground">Admin Access</Link>
           </div>
         )}
       </header>
