@@ -11,12 +11,23 @@ export function Home() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative py-24 md:py-32 lg:py-40 overflow-hidden border-b-2 border-border">
+      <section className="relative pt-4 md:pt-6 pb-24 md:pb-32 lg:pb-40 overflow-hidden border-b-2 border-border">
         {/* Abstract background noise/pattern */}
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIi8+CjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9IiMwMDAiLz4KPC9zdmc+')] z-0 pointer-events-none"></div>
         
         <div className="container mx-auto px-4 md:px-8 relative z-10">
           <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
+            <img
+              src="/startup-review-guy-logos/startup-review-guy-logo-mascot-plain.svg"
+              alt="Startup Review Guy mascot"
+              className="hidden dark:block w-24 md:w-28 mb-6"
+            />
+            <img
+              src="/startup-review-guy-logos/startup-review-guy-logo-mascot-plain-light.svg"
+              alt="Startup Review Guy mascot"
+              className="block dark:hidden w-24 md:w-28 mb-6"
+            />
+
             <div className="inline-flex items-center gap-2 px-4 py-2 border-2 border-foreground bg-foreground text-background font-display font-bold uppercase tracking-widest text-xs md:text-sm mb-8">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
               New reviews weekly

@@ -36,7 +36,7 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="srg-theme">
+    <ThemeProvider defaultTheme="dark" storageKey="srg-theme">
       <QueryClientProvider client={queryClient}>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <Router />
