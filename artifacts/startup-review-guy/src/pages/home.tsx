@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { StartupCard } from "@/components/startup-card";
 import { ArrowRight, PlayCircle, Handshake, Target, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SocialLinks } from "@/components/social-links";
 
 export function Home() {
   const { data: stats } = useGetStats();
@@ -51,6 +52,8 @@ export function Home() {
                 <Link href="/partner">Partner With Me</Link>
               </Button>
             </div>
+
+            <SocialLinks className="flex items-center gap-6 mt-10" iconClassName="w-6 h-6" />
           </div>
         </div>
       </section>

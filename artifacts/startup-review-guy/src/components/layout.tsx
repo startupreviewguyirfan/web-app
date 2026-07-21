@@ -4,6 +4,7 @@ import { Moon, Sun, Monitor, Menu, X, ArrowRight } from "lucide-react";
 import logoPng from "@assets/startup-review-guy-logo_1784458264968.png";
 import { useState } from "react";
 import { Button } from "./ui/button";
+import { SocialLinks } from "./social-links";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
@@ -74,11 +75,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex flex-col md:items-end gap-6">
-            <div className="flex items-center gap-4 font-display font-medium uppercase tracking-widest text-sm">
-              <a href="#" className="hover:text-primary transition-colors">YouTube</a>
-              <a href="#" className="hover:text-primary transition-colors">X/Twitter</a>
-              <a href="#" className="hover:text-primary transition-colors">LinkedIn</a>
-            </div>
+            <SocialLinks className="flex items-center gap-5" iconClassName="w-5 h-5" />
             <div className="text-xs text-muted-foreground font-medium uppercase tracking-widest">
               &copy; {new Date().getFullYear()} Startup Review Guy. All rights reserved.
             </div>
