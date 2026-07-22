@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,7 +24,8 @@ type PartnerFormValues = z.infer<typeof partnerSchema>;
 export function Partner() {
   const { toast } = useToast();
   const submitInquiry = useSubmitPartnerInquiry();
-  
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
   const form = useForm<PartnerFormValues>({
     resolver: zodResolver(partnerSchema),
     defaultValues: {
@@ -43,11 +45,8 @@ export function Partner() {
     
     submitInquiry.mutate({ data }, {
       onSuccess: () => {
-        toast({
-          title: "Inquiry Received",
-          description: "I'll take a look and get back to you within 48 hours.",
-        });
         form.reset();
+        setIsSubmitted(true);
       },
       onError: () => {
         toast({
@@ -105,8 +104,20 @@ export function Partner() {
           <div className="absolute top-0 right-0 w-16 h-16 border-l-2 border-b-2 border-border bg-muted/50 translate-x-2 -translate-y-2 -z-10"></div>
           <div className="absolute bottom-0 left-0 w-16 h-16 border-r-2 border-t-2 border-border bg-muted/50 -translate-x-2 translate-y-2 -z-10"></div>
           
+          {isSubmitted ? (
+            <div className="flex flex-col items-center text-center py-12 px-4 bg-green-50 dark:bg-green-950/30 border-2 border-green-500">
+              <div className="text-6xl mb-4">🎉</div>
+              <h2 className="font-display text-3xl font-black uppercase tracking-tight mb-4 text-green-700 dark:text-green-400">
+                Pitch Received!
+              </h2>
+              <p className="text-lg text-green-700 dark:text-green-400 font-medium max-w-md">
+                ✅ Thanks for reaching out — I'll personally review your submission and get back to you within 48 hours. Keep an eye on your inbox!
+              </p>
+            </div>
+          ) : (
+          <>
           <h2 className="font-display text-3xl font-black uppercase tracking-tight mb-8 border-b-2 border-border pb-4">Submit Your Startup</h2>
-          
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Honeypot field - hidden from users */}
@@ -128,7 +139,7 @@ export function Partner() {
                   name="companyName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Company/Product Name</FormLabel>
+                      <FormLabel>Company/Product</FormLabel>
                       <FormControl>
                         <Input placeholder="Acme Corp" {...field} />
                       </FormControl>
@@ -233,6 +244,8 @@ export function Partner() {
               </Button>
             </form>
           </Form>
+          </>
+          )}
         </div>
       </div>
     </div>
