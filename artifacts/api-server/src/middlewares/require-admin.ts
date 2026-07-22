@@ -1,9 +1,9 @@
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../types";
-import { getSessionUser } from "../lib/session";
+import { getAdminUser } from "../lib/auth-user";
 
 export const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
-  const user = await getSessionUser(c);
+  const user = await getAdminUser(c);
   if (!user) {
     return c.json({ error: "Unauthorized" }, 401);
   }

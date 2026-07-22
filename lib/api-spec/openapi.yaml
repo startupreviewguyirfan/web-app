@@ -158,7 +158,9 @@ paths:
     get:
       operationId: getSession
       tags: [auth]
-      summary: Get current auth session
+      summary: Get current auth session (validates the Supabase access token, if any, against the admin allow-list)
+      security:
+        - supabaseAuth: []
       responses:
         "200":
           description: Session info
@@ -167,24 +169,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/AuthSession"
 
-  /auth/logout:
-    post:
-      operationId: logout
-      tags: [auth]
-      summary: Log out
-      responses:
-        "200":
-          description: Logged out
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LogoutResult"
-
   /admin/startups:
     get:
       operationId: adminListStartups
       tags: [admin]
       summary: Admin - list all startups (including unpublished)
+      security:
+        - supabaseAuth: []
       parameters:
         - name: page
           in: query
@@ -213,6 +204,8 @@ paths:
       operationId: createStartup
       tags: [admin]
       summary: Admin - create a startup entry
+      security:
+        - supabaseAuth: []
       requestBody:
         required: true
         content:
@@ -236,6 +229,8 @@ paths:
       operationId: updateStartup
       tags: [admin]
       summary: Admin - update a startup entry
+      security:
+        - supabaseAuth: []
       parameters:
         - name: id
           in: path
@@ -263,6 +258,8 @@ paths:
       operationId: deleteStartup
       tags: [admin]
       summary: Admin - delete a startup entry
+      security:
+        - supabaseAuth: []
       parameters:
         - name: id
           in: path
@@ -282,6 +279,8 @@ paths:
       operationId: adminListInquiries
       tags: [admin]
       summary: Admin - list all partnership inquiries
+      security:
+        - supabaseAuth: []
       parameters:
         - name: status
           in: query
@@ -304,6 +303,8 @@ paths:
       operationId: updateInquiry
       tags: [admin]
       summary: Admin - update inquiry status
+      security:
+        - supabaseAuth: []
       parameters:
         - name: id
           in: path
@@ -329,6 +330,12 @@ paths:
           description: Unauthorized
 
 components:
+  securitySchemes:
+    supabaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase Auth access token (from supabase-js on the client), verified server-side and checked against ADMIN_EMAILS.
   schemas:
     HealthStatus:
       type: object
@@ -656,10 +663,3 @@ components:
               type: ["string", "null"]
             picture:
               type: ["string", "null"]
-
-    LogoutResult:
-      type: object
-      required: [success]
-      properties:
-        success:
-          type: boolean

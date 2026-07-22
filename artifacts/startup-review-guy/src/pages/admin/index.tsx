@@ -8,15 +8,23 @@ import { format } from "date-fns";
 import { ExternalLink, Edit, Trash2, Plus, LogOut } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getAdminListStartupsQueryKey, getAdminListInquiriesQueryKey } from "@workspace/api-client-react";
+import { supabase } from "@/lib/supabase";
+
+function signInWithGoogle() {
+  supabase?.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${window.location.origin}/admin-access` },
+  });
+}
 
 export function AdminDashboard() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { data: session, isLoading: sessionLoading } = useGetSession();
-  
+
   const { data: startupsData, isLoading: startupsLoading } = useAdminListStartups({ limit: 100 });
   const { data: inquiriesData, isLoading: inquiriesLoading } = useAdminListInquiries({});
-  
+
   const deleteStartup = useDeleteStartup();
   const updateInquiry = useUpdateInquiry();
 
@@ -30,9 +38,13 @@ export function AdminDashboard() {
         <div className="border-2 border-border bg-card p-12 max-w-md w-full text-center space-y-6">
           <h1 className="font-display text-3xl font-black uppercase tracking-tight">Admin Access</h1>
           <p className="text-muted-foreground">You must be authorized to access this area.</p>
-          <Button asChild size="lg" className="w-full">
-            <a href="/api/auth/google">Sign in with Google</a>
-          </Button>
+          {supabase ? (
+            <Button size="lg" className="w-full" onClick={signInWithGoogle}>
+              Sign in with Google
+            </Button>
+          ) : (
+            <p className="text-sm text-destructive">Admin login is not configured.</p>
+          )}
         </div>
       </div>
     );
@@ -62,11 +74,14 @@ export function AdminDashboard() {
         <h1 className="font-display text-4xl font-black uppercase tracking-tight">Command Center</h1>
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium text-muted-foreground">{session.user?.email}</span>
-          <form method="POST" action="/api/auth/logout">
-            <Button type="submit" variant="outline" size="sm" className="gap-2">
-              <LogOut className="w-4 h-4" /> Logout
-            </Button>
-          </form>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => supabase?.auth.signOut()}
+          >
+            <LogOut className="w-4 h-4" /> Logout
+          </Button>
         </div>
       </div>
 

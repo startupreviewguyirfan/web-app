@@ -3,9 +3,8 @@ import type { createDb } from "@workspace/db";
 // Present when running as a Cloudflare Worker; absent under Node.
 export type Bindings = {
   HYPERDRIVE?: { connectionString: string };
-  SESSION_SECRET?: string;
-  GOOGLE_CLIENT_ID?: string;
-  GOOGLE_CLIENT_SECRET?: string;
+  SUPABASE_URL?: string;
+  SUPABASE_PUBLISHABLE_KEY?: string;
   ADMIN_EMAILS?: string;
   NODE_ENV?: string;
 };

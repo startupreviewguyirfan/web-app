@@ -12,10 +12,13 @@
 #      Hyperdrive already pools connections on Cloudflare's side, and pairing it
 #      with a transaction-mode pooler on the Supabase side is not recommended.
 #      Paste the printed id into the `id` field below.
-#   3. wrangler secret put SESSION_SECRET
-#      wrangler secret put GOOGLE_CLIENT_ID       (optional, admin login)
-#      wrangler secret put GOOGLE_CLIENT_SECRET   (optional, admin login)
-#      wrangler secret put ADMIN_EMAILS           (optional, admin login)
+#   3. wrangler secret put SUPABASE_URL              (optional, admin login)
+#      wrangler secret put SUPABASE_PUBLISHABLE_KEY   (optional, admin login)
+#      wrangler secret put ADMIN_EMAILS               (optional, admin login)
+#   4. VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY must also be set in
+#      the shell environment that runs `pnpm run deploy` (below) — Vite bakes
+#      them into the built frontend at build time, they aren't read by the
+#      Worker at runtime.
 
 name = "startup-review-guy-api"
 main = "src/index.worker.ts"

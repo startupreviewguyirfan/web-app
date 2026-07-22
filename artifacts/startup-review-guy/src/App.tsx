@@ -1,9 +1,12 @@
+import { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { setAuthTokenGetter, getGetSessionQueryKey } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/toaster';
 import NotFound from '@/pages/not-found';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Layout } from '@/components/layout';
+import { supabase } from '@/lib/supabase';
 
 import { Home } from '@/pages/home';
 import { Startups } from '@/pages/startups';
@@ -13,6 +16,25 @@ import { AdminDashboard } from '@/pages/admin/index';
 import { AdminStartupForm } from '@/pages/admin/startup-form';
 
 const queryClient = new QueryClient();
+
+// Every API request that opts into auth (see custom-fetch.ts) picks up the
+// current Supabase access token as a bearer token, so requireAdmin on the
+// server can verify it — this repo has no server-side session of its own.
+setAuthTokenGetter(async () => {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+});
+
+function useSupabaseSessionSync() {
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: subscription } = supabase.auth.onAuthStateChange(() => {
+      queryClient.invalidateQueries({ queryKey: getGetSessionQueryKey() });
+    });
+    return () => subscription.subscription.unsubscribe();
+  }, []);
+}
 
 function Router() {
   return (
@@ -35,6 +57,8 @@ function Router() {
 }
 
 function App() {
+  useSupabaseSessionSync();
+
   return (
     <ThemeProvider defaultTheme="dark" storageKey="srg-theme">
       <QueryClientProvider client={queryClient}>
