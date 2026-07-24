@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/analytics";
 import { Handshake, Zap, ShieldAlert } from "lucide-react";
 
 const partnerSchema = z.object({
@@ -42,9 +43,19 @@ export function Partner() {
   const onSubmit = (data: PartnerFormValues) => {
     // Basic bot protection
     if (data.honeypot) return;
-    
+
+    trackEvent("partner_form_submit_clicked", {
+      event_category: "engagement",
+      event_label: "partner_form"
+    });
+
     submitInquiry.mutate({ data }, {
       onSuccess: () => {
+        trackEvent("generate_lead", {
+          event_category: "conversion",
+          event_label: "partner_form",
+          budget_range: data.budgetRange
+        });
         form.reset();
         setIsSubmitted(true);
       },

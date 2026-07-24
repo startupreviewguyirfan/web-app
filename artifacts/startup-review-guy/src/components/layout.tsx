@@ -5,6 +5,11 @@ import logoPng from "@assets/startup-review-guy-logo_1784458264968.png";
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { SocialLinks } from "./social-links";
+import { trackEvent } from "@/lib/analytics";
+
+function trackPartnerCtaClick(location: string) {
+  trackEvent("partner_cta_click", { event_category: "engagement", event_label: location });
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
@@ -22,7 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-6">
             <nav className="hidden md:flex items-center gap-6 font-display font-medium uppercase tracking-widest text-sm">
               <Link href="/startups" className="hover:text-primary transition-colors">Startups</Link>
-              <Link href="/partner" className="hover:text-primary transition-colors">Partner With Me</Link>
+              <Link href="/partner" onClick={() => trackPartnerCtaClick("header_nav")} className="hover:text-primary transition-colors">Partner With Me</Link>
             </nav>
 
             <div className="flex items-center gap-2">
@@ -53,7 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {mobileMenuOpen && (
           <div className="md:hidden border-t-2 border-border bg-background absolute w-full left-0 p-4 flex flex-col gap-4 shadow-xl">
             <Link href="/startups" onClick={() => setMobileMenuOpen(false)} className="font-display uppercase tracking-widest text-lg py-2 border-b border-border/50">Startups</Link>
-            <Link href="/partner" onClick={() => setMobileMenuOpen(false)} className="font-display uppercase tracking-widest text-lg py-2 border-b border-border/50">Partner With Me</Link>
+            <Link href="/partner" onClick={() => { trackPartnerCtaClick("mobile_nav"); setMobileMenuOpen(false); }} className="font-display uppercase tracking-widest text-lg py-2 border-b border-border/50">Partner With Me</Link>
           </div>
         )}
       </header>

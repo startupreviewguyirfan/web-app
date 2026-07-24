@@ -16,6 +16,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-K1T071Z8QX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      // send_page_view is handled manually in src/lib/analytics.ts on route change,
+      // since this is a client-side-routed SPA (wouter) with one index.html.
+      gtag('config', 'G-K1T071Z8QX', { send_page_view: false });
+    </script>
   </head>
   <body>
     <div id="root"></div>

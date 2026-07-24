@@ -4,6 +4,7 @@ import { StartupCard } from "@/components/startup-card";
 import { ArrowRight, PlayCircle, Handshake, Target, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SocialLinks } from "@/components/social-links";
+import { trackEvent } from "@/lib/analytics";
 
 export function Home() {
   const { data: stats } = useGetStats();
@@ -49,7 +50,7 @@ export function Home() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="w-full sm:w-auto text-lg bg-transparent">
-                <Link href="/partner">Partner With Me</Link>
+                <Link href="/partner" onClick={() => trackEvent("partner_cta_click", { event_category: "engagement", event_label: "home_hero" })}>Partner With Me</Link>
               </Button>
             </div>
 
@@ -167,7 +168,7 @@ export function Home() {
             
             <div className="mt-16 text-center">
               <Button asChild size="lg">
-                <Link href="/partner">Pitch Your Startup</Link>
+                <Link href="/partner" onClick={() => trackEvent("partner_cta_click", { event_category: "engagement", event_label: "home_philosophy" })}>Pitch Your Startup</Link>
               </Button>
             </div>
           </div>

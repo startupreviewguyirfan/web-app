@@ -3,10 +3,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setAuthTokenGetter, getGetSessionQueryKey } from '@workspace/api-client-react';
 import { Toaster } from '@/components/ui/toaster';
 import NotFound from '@/pages/not-found';
-import { Route, Switch, Router as WouterRouter } from 'wouter';
+import { Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Layout } from '@/components/layout';
 import { supabase } from '@/lib/supabase';
+import { trackPageView } from '@/lib/analytics';
 
 import { Home } from '@/pages/home';
 import { Startups } from '@/pages/startups';
@@ -36,7 +37,16 @@ function useSupabaseSessionSync() {
   }, []);
 }
 
+function useAnalyticsPageViews() {
+  const [location] = useLocation();
+  useEffect(() => {
+    trackPageView(location);
+  }, [location]);
+}
+
 function Router() {
+  useAnalyticsPageViews();
+
   return (
     <Layout>
       <Switch>
